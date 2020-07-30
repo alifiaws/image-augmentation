@@ -1,0 +1,193 @@
+import tensorflow as tf
+from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+!wget --no-check-certificate \ *(url)*
+
+# melakukan ekstraksi pada file zip
+import zipfile
+import os
+local_zip = '/tmp/rockpaperscissors.zip'
+zip_ref = zipfile.ZipFile(local_zip, 'r')
+zip_ref.extractall('/tmp')
+zip_ref.close()
+
+base_dir = '/tmp/rockpaperscissors'
+train_dir = os.path.join(base_dir, 'train')
+validation_dir = os.path.join(base_dir, 'val')
+
+os.listdir('/tmp/rockpaperscissors/') # mengetahui isi dalam suatu direktori 
+
+# hapus file yang tidak digunakan dalam direktori
+import shutil
+os.remove('/tmp/rockpaperscissors/README_rpc-cv-images.txt')
+shutil.rmtree('/tmp/rockpaperscissors/rps-cv-images')
+
+os.listdir('/tmp/rockpaperscissors/') # mengetahui isi dalam suatu direktori 
+
+# membuat direktori train dan validation
+os.mkdir(train_dir)
+os.mkdir(validation_dir)
+
+rock_dir = os.path.join(base_dir,'rock')
+paper_dir = os.path.join(base_dir, 'paper')
+scissors_dir = os.path.join(base_dir, 'scissors')
+
+from sklearn.model_selection import train_test_split
+# membagi direktori rock menjadi data train dan data validation
+train_rock_dir, val_rock_dir = train_test_split(os.listdir(rock_dir), test_size = 0.2)
+
+# membagi direktori paper menjadi data train dan data validation
+train_paper_dir, val_paper_dir = train_test_split(os.listdir(paper_dir), test_size = 0.2)
+
+# membagi direktori scissors menjadi data train dan data validation
+train_scissors_dir, val_scissors_dir = train_test_split(os.listdir(scissors_dir), test_size = 0.2)
+
+# membuat direktori rock, paper, scissors pada direktori data training
+train_rock = os.path.join(train_dir, 'rock')
+train_paper = os.path.join(train_dir, 'paper')
+train_scissors = os.path.join(train_dir, 'scissors')
+
+# membuat direktori rock, paper, scissors pada direktori data validation
+validation_rock = os.path.join(validation_dir, 'rock')
+validation_paper = os.path.join(validation_dir, 'paper')
+validation_scissors = os.path.join(validation_dir, 'scissors')
+
+# membuat direktori baru di dalam direktori data train dan validation
+if not os.path.exists(train_rock):
+  os.mkdir(train_rock)
+if not os.path.exists(train_paper):
+  os.mkdir(train_paper)
+if not os.path.exists(train_scissors):
+  os.mkdir(train_scissors)
+
+if not os.path.exists(validation_rock):
+  os.mkdir(validation_rock)
+if not os.path.exists(validation_paper):
+  os.mkdir(validation_paper)
+if not os.path.exists(validation_scissors):
+  os.mkdir(validation_scissors)
+  
+ # copy data train dan data validation ke direktori baru
+import shutil
+
+for i in train_rock_dir:
+  shutil.copy(os.path.join(rock_dir, i), os.path.join(train_rock, i))
+for i in train_paper_dir:
+  shutil.copy(os.path.join(paper_dir,i), os.path.join(train_paper,i))
+for i in train_scissors_dir:
+  shutil.copy(os.path.join(scissors_dir,i), os.path.join(train_scissors,i))
+
+for i in val_rock_dir:
+  shutil.copy(os.path.join(rock_dir, i), os.path.join(validation_rock,i))
+for i in val_paper_dir:
+  shutil.copy(os.path.join(paper_dir,i), os.path.join(validation_paper,i))
+for i in val_scissors_dir:
+  shutil.copy(os.path.join(scissors_dir,i), os.path.join(validation_scissors,i))
+
+train_datagen = ImageDataGenerator(
+                    rescale=1./255,
+                    rotation_range=20,
+                    horizontal_flip=True,
+                    shear_range = 0.2,
+                    fill_mode = 'nearest')
+
+test_datagen = ImageDataGenerator(
+                    rescale=1./255,
+                    rotation_range=20,
+                    horizontal_flip=True,
+                    shear_range = 0.2,
+                    fill_mode = 'nearest')
+                    
+train_generator = train_datagen.flow_from_directory(
+        train_dir,  # direktori data training
+        target_size=(100, 150),  # mengubah resolusi seluruh gambar menjadi 100x150 piksel
+        batch_size=4,
+        class_mode='categorical') # klasifikasi multi kelas maka menggunakan class_mode = 'categorical'
+
+validation_generator = test_datagen.flow_from_directory(
+        validation_dir, # direktori data validation
+        target_size=(100, 150), # mengubah resolusi seluruh gambar menjadi 100x150 piksel
+        batch_size=4, 
+        class_mode='categorical') # klasifikasi multi kelas maka menggunakan class_mode = 'categorical'
+        
+# membuat model sequential
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Conv2D(32, (3,3), activation = 'relu', input_shape= (100,150,3)),
+    tf.keras.layers.MaxPooling2D(2,2),
+    tf.keras.layers.Conv2D(64,(3,3), activation= 'relu'),
+    tf.keras.layers.MaxPooling2D(2,2),
+    tf.keras.layers.Conv2D(128,(3,3), activation= 'relu'),
+    tf.keras.layers.MaxPooling2D(2,2),
+    tf.keras.layers.Conv2D(256,(3,3), activation= 'relu'),
+    tf.keras.layers.MaxPooling2D(2,2),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(512, activation= 'relu'),
+    tf.keras.layers.Dense(3, activation= 'softmax') # fungsi multi kelas
+])
+
+model.compile(optimizer='adam',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+             
+history = model.fit(
+      train_generator,
+      steps_per_epoch=30,  # berapa batch yang akan dieksekusi pada setiap epoch
+      epochs=30,
+      validation_data=validation_generator, # menampilkan akurasi pengujian data validation
+      validation_steps=5,  # berapa batch yang akan dieksekusi pada setiap epoch
+      verbose=2)
+      
+import numpy as np
+from google.colab import files
+from keras.preprocessing import image
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+
+%matplotlib inline
+
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+
+loss=history.history['loss']
+val_loss=history.history['val_loss']
+
+epochs_range = range(30)
+
+plt.figure(figsize=(8, 8))
+plt.subplot(1, 2, 1)
+plt.plot(epochs_range, acc, label='Akurasi Set Training')
+plt.plot(epochs_range, val_acc, label='Akurasi Set Validation')
+plt.legend(loc='lower right')
+plt.title('Plot Akurasi Training dan Validation')
+
+plt.subplot(1, 2, 2)
+plt.plot(epochs_range, loss, label='Loss Set Training')
+plt.plot(epochs_range, val_loss, label='Loss Set Validation')
+plt.legend(loc='upper right')
+plt.title('Plot Loss Training dan Validation')
+plt.show()
+
+uploaded = files.upload()
+
+for fn in uploaded.keys():
+ 
+  # prediksi gambar
+  path = fn
+  img = image.load_img(path, target_size=(100,150))
+  imgplot = plt.imshow(img)
+  x = image.img_to_array(img)
+  x = np.expand_dims(x, axis=0)
+
+  images = np.vstack([x])
+  classes = model.predict(images, batch_size=4)
+  
+  print(fn)
+  if classes[0,1]!=0:
+    print('rock')
+  elif classes[0,0]!=0:
+    print('paper')
+  else:
+    print('scissors')
